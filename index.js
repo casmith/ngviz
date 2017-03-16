@@ -9,15 +9,28 @@ function transformData(json) {
 		name: 'app', 
 		children: _.map(json, (obj, key) => {
 				var children = _.map(obj, function (o) {
+					o.size = 1;
+					o.children =[]
 					return o;
 				});
+				if (!children.length) {
+					children.push({
+						name: obj.name, 
+						children: [],
+						size: 1})
+				}
 				return {
+					module: true,
 					name: key, 
-					size: children.length
+					children: children
 				};
+		}).filter((e) => {
+			return e.name.indexOf('template/') !== 0;
 		})
 	};
 }
+
+var json = transformData(require('./all-di.json'));
 
 jsdom.env({
 	html:'',
@@ -25,8 +38,8 @@ jsdom.env({
 		QuerySelector:true 
 	},
 	done: function(errors, window) {
-		var width = 960,
-			height = 500,
+		var width = 2000,
+			height = 2000,
 			color = d3.scale.category20c();
 
 		var treemap = d3.layout.treemap()
@@ -40,31 +53,32 @@ jsdom.env({
 			.append("g")
 			.attr("transform", "translate(-.5,-.5)");
 
-		var json = require('./all-di.json');
-		json = transformData(json);
 		
-
 		var cell = svg.data([json]).selectAll("g")
 			.data(treemap.nodes)
 			.enter().append("g")
 			.attr("class", "cell")
 			.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
 
+		
 		cell.append("rect")
 			.attr("width", function(d) { return d.dx; })
 			.attr("height", function(d) { return d.dy; })
-			.style("fill", function(d) { return color(d.size) });
+			.style("fill", function(d) { return d.children && color(d.name); });
 
 		cell.append("text")
 			.attr("x", function(d) { return d.dx / 2; })
 			.attr("y", function(d) { return d.dy / 2; })
 			.attr("dy", ".35em")
 			.attr("text-anchor", "middle")
-			.text(function(d) { return d.children ? null : d.name + '(' + d.size + ')'; });
+			.text(function(d) { return d.name; });
 
-		console.log('<!DOCTYPE html><meta charset="utf-8"><style>rect {fill: none;stroke: #fff;}text {font: 10px sans-serif;}</style><body>' 
+
+		console.log('<!DOCTYPE html><meta charset="utf-8"><style>rect {fill: none;stroke: #ddd;}text {font: 12px sans-serif}</style><body>' 
 			+ d3.select(window.document.body).html() 
 			+ '</body>');
+
+		// console.log(json);
 	}
 
 });
